@@ -1,6 +1,6 @@
-import { Kafka, logLevel } from "kafkajs";
+import { Kafka, Producer, Consumer } from "kafkajs";
 
-const kafka = new Kafka({
+export const kafka = new Kafka({
   clientId: "quick-chat-app",
   brokers: [process.env.KAFKA_BROKERS || "localhost:9092"],
   ssl: process.env.KAFKA_SSL === "true",
@@ -14,12 +14,14 @@ const kafka = new Kafka({
       : undefined,
 });
 
-export const producer = kafka.producer();
-export const consumer = kafka.consumer({
-  groupId: "chats",
-});
+export const producer: Producer = kafka.producer();
+export const consumer: Consumer = kafka.consumer({ groupId: "chats-v1-group" });
 
 export const connectKafkaProducer = async () => {
-  await producer.connect();
-  console.log("Kafka Producer connected...");
+    try {
+        await producer.connect();
+        console.log("Kafka Producer Connected...");
+    } catch (error) {
+        console.error("Kafka Producer Connection Error:", error);
+    }
 };

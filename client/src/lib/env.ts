@@ -1,9 +1,11 @@
+import { z } from "zod";
 
+const envSchema = z.object({
+  NEXT_PUBLIC_BACKEND_URL: z.string().url(),
+  NEXT_PUBLIC_APP_URL: z.string().url(),
+});
 
-class Env {
-
-    static APP_URL : string = process.env.MODE === "development" ? "http://localhost:3000" : process.env.NEXT_PUBLIC_APP_URL as string;
-    static BACKEND_URL : string = process.env.MODE === "development" ? "http://localhost:8000" : process.env.NEXT_PUBLIC_BACKEND_URL as string;
-}
-
-export default Env
+export const Env = envSchema.parse({
+  NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+});

@@ -1,37 +1,39 @@
 import type { Metadata } from "next";
-import { Inter as FontSans } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
-import { cn } from "@/lib/utils";
-import SessionProvider from "@/providers/SessionProvider";
-import { Toaster } from "@/components/ui/sonner";
 
-const fontSans = FontSans({
-  variable: "--font-sans",
-  subsets: ["latin"],
-})
+import AuthSessionProvider from "@/providers/AuthSessionProvider";
+
+const geistSans = localFont({
+  src: "./fonts/GeistVF.woff",
+  variable: "--font-geist-sans",
+  weight: "100 900",
+});
+const geistMono = localFont({
+  src: "./fonts/GeistMonoVF.woff",
+  variable: "--font-geist-mono",
+  weight: "100 900",
+});
+
 export const metadata: Metadata = {
-  title: "Quick Chat App",
-  description: "To chat as quick as possible without login",
+  title: "QuickChat",
+  description: "QuickChat - Chat with your friends and family.",
 };
 
 export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
+  children, //
+}: Readonly<{ //  "Once these props are passed in, they cannot be changed.
+  children: React.ReactNode; // This defines the Type of children
 }>) {
   return (
     <html lang="en">
-      <SessionProvider>
-        <body
-          className={cn(
-            "min-h-screen bg-background font-sans antialiased",
-            fontSans.variable
-          )}
-        >
-          {children}
-          <Toaster richColors duration={5000} />
-        </body>
-      </SessionProvider>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <AuthSessionProvider>
+            {children}
+        </AuthSessionProvider>
+      </body>
     </html>
   );
 }

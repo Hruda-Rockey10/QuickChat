@@ -1,44 +1,45 @@
-import { Server, Socket } from "socket.io"
-import prisma from "./config/db.config.js"
-import { produceMessage } from "./helper.js"
+import { Server, Socket } from "socket.io";
+import { producer } from "./config/kafka.config";
 
 interface CustomSocket extends Socket {
-    room?: string
+  room?: string;
 }
 
-export const setupSocket = (io: Server) =>{
+export const setupSocket = (io: Server) => {
+  io.use((socket: CustomSocket, next) => {
+    const room = socket.handshake.auth.room || socket.handshake.headers.room;
+    if (!room) {
+      return next(new Error("Invalid room"));
+    }
+    socket.room = room;
+    next();
+  });
 
-    io.use((socket : CustomSocket, next) =>{
-        const room = socket.handshake.auth.room
+  io.on("connection", (socket: CustomSocket) => {
+    socket.join(socket.room!);
+    console.log(`Socket connected: ${socket.id} in room ${socket.room}`);
 
-        if(!room) {
-            return next(new Error("Invalid room"))
-        }
+    socket.on("message", async (data) => {
+      // 1. Send to Everyone Else (Instant)
+      socket.to(socket.room!).emit("message", data);
 
-        socket.room = room
-        next()
-    })
+      // 2. Save to DB (Background via Kafka)
+      try {
+          if (process.env.KAFKA_TOPIC) {
+            await producer.send({
+                topic: process.env.KAFKA_TOPIC,
+                messages: [{ value: JSON.stringify(data) }],
+            });
+          }
+      } catch (error) {
+          console.error("Kafka Produce Error:", error);
+      }
+    });
 
-    io.on("connection", (socket: CustomSocket) =>{
+    socket.on("disconnect", () => {
+      console.log(`Socket disconnected: ${socket.id}`);
+    });
+  });
+};
 
-        //join the room
-        socket.join(socket.room)
 
-        // console.log("The socket connected..", socket.id);
-
-        socket.on("message", async (data) =>{
-            // await prisma.chats.create({
-            //     data: data
-            // })
-
-            await produceMessage(process.env.KAFKA_TOPIC!, data)
-
-            // socket.broadcast.emit("message", data)
-            socket.to(socket.room).emit("message", data)
-        })
-
-        socket.on("disconnect", () => {
-            console.log("The socket disconnected..", socket.id);
-        })
-    })
-}

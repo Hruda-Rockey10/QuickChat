@@ -1,59 +1,53 @@
+/// <reference path="./custom-types.d.ts" />
 import express, { Application, Request, Response } from "express";
 import "dotenv/config";
 import cors from "cors";
-import Routes from "./routes/index.js"
+import { createServer } from "http";
+import { Server } from "socket.io";
 import { createAdapter } from "@socket.io/redis-streams-adapter";
-import redis from './config/redis.config.js'
-
-const corsOptions = {
-  origin: [
-    "https://quick-chat-nyan.vercel.app",
-    "http://localhost:3000", // ✅ your frontend domain
-    "https://admin.socket.io",             // ✅ optional: socket.io admin UI
-  ],
-  credentials: true, // ✅ allow cookies/auth headers
-};
+import redis from "./config/redis.config";
+import { setupSocket } from "./socket";
+import { connectKafkaProducer } from "./config/kafka.config";
+import { setupChatConsumer } from "./consumers/ChatConsumer";
+import Routes from "./routes/index";
 
 const app: Application = express();
-const PORT = process.env.PORT || 10000;
-import {Server} from 'socket.io'
-import { createServer } from "http";
-import { setupSocket } from "./socket.js";
-import { instrument } from "@socket.io/admin-ui";
-import { connectKafkaProducer } from "./config/kafka.config.js";
-import { consumeMessages } from "./helper.js";
+const PORT = process.env.PORT || 8000;
 
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["https://quick-chat-nyan.vercel.app","http://localhost:3000", "https://admin.socket.io"],
-    credentials: true
+    origin: ["http://localhost:3000", "http://localhost:3001"],
+    credentials: true,
   },
-  adapter: createAdapter(redis)
-})
-
-instrument(io, {
-  auth: false,
-  mode: "development",
+  adapter: createAdapter(redis),
 });
 
 setupSocket(io);
-export {io};
-
-// * Middleware
-app.use(cors(corsOptions));
+app.use(cors({
+    origin: ["http://localhost:3000", "http://localhost:3001"],
+    credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-app.get("/", (req: Request, res: Response) => {
-  return res.send("It's working 🙌");
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
 });
 
-//Routes
-app.use("/api" , Routes)
+app.get("/", (req: Request, res: Response) => {
+  res.send("QuickChat Server V1 is Running! 🚀");
+});
 
-connectKafkaProducer().catch(err=>{console.log("Something went wrong while connecting kafka producer", err)})
+app.use("/api", Routes);
 
-consumeMessages("chats").catch(err=>{console.log("Something went wrong while connecting kafka consumer", err)})
+export { app, server };
 
-server.listen(PORT, () => console.log(`Server is running on PORT ${PORT}`));
+if (process.env.NODE_ENV !== "test") {
+  // Connect Infrastructure
+  connectKafkaProducer();
+  setupChatConsumer();
+
+  server.listen(PORT, () => console.log(`Server v1 is running on PORT ${PORT}`));
+}

@@ -1,11 +1,9 @@
-interface AuthUser {
-    id: number;
-    name: string;
-    email: string;
-}
+import { AuthUser } from "./types";
 
-declare namespace Express {
-    export interface Request {
-        user?: AuthUser;
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthUser;
     }
+  }
 }
