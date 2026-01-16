@@ -95,4 +95,9 @@ describe("JoinController - joinGroup", () => {
              message: "Joined successfully" 
         }));
     });
+
+    afterAll(async () => {
+        // Clean up to prevent Jest warnings
+        jest.clearAllMocks();
+    });
 });
